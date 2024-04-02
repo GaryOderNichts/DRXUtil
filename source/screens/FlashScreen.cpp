@@ -63,9 +63,19 @@ bool CopyFile(const std::string& srcPath, const std::string& dstPath)
     }
 
     uint8_t buf[4096];
-    while (!feof(inf)) {
-        size_t read = fread(buf, 1, sizeof(buf), inf);
-        fwrite(buf, 1, read, outf);
+    size_t bytesRead;
+    while ((bytesRead = fread(buf, 1, sizeof(buf), inf)) > 0) {
+        if (fwrite(buf, 1, bytesRead, outf) != bytesRead) {
+            fclose(inf);
+            fclose(outf);
+            return false;
+        }
+    }
+
+    if (ferror(inf)) {
+        fclose(inf);
+        fclose(outf);
+        return false;
     }
 
     fclose(inf);
@@ -374,8 +384,8 @@ bool FlashScreen::Update(VPADStatus& input)
             CCRCDCSoftwareAbort(CCR_CDC_DESTINATION_DRC0);
 
             // Reattach the DRC in update mode
-            if (!ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_UPDATE, 0)) {
-                ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, 0);
+            if (!ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_UPDATE, FALSE)) {
+                ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                 mErrorString = "Failed to reattach DRC in update mode.";
                 mState = STATE_ERROR;
                 break;  
@@ -386,7 +396,7 @@ bool FlashScreen::Update(VPADStatus& input)
             mUpdateResult = 0;
             if (CCRCDCSoftwareUpdate(CCR_CDC_DESTINATION_DRC0, mFirmwarePath.c_str(), SoftwareUpdateCallback, this) != 0) {
                 AbortUpdate(CCR_CDC_DESTINATION_DRC0);
-                ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, 0);
+                ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                 mErrorString = "Failed to start software update.";
                 mState = STATE_ERROR;
                 break;  
@@ -410,7 +420,7 @@ bool FlashScreen::Update(VPADStatus& input)
                     mState = STATE_ACTIVATE;
                 } else {
                     AbortUpdate(CCR_CDC_DESTINATION_DRC0);
-                    ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, 0);
+                    ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                     mErrorString = "Software update failed.";
                     mState = STATE_ERROR;
                 }
@@ -421,7 +431,7 @@ bool FlashScreen::Update(VPADStatus& input)
             // Activate the newly flashed firmware
             if (CCRCDCSoftwareActivate(CCR_CDC_DESTINATION_DRC0) != 0) {
                 AbortUpdate(CCR_CDC_DESTINATION_DRC0);
-                ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, 0);
+                ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                 mErrorString = "Failed to activate software update.";
                 mState = STATE_ERROR;
                 break;  
@@ -429,7 +439,7 @@ bool FlashScreen::Update(VPADStatus& input)
 
             // Put the gamepad back into active mode
             OSTime startTime = OSGetSystemTime();
-            while (!ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, 0)) {
+            while (!ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE)) {
                 // 10 second timeout
                 if (OSTicksToSeconds(OSGetSystemTime() - startTime) > 10) {
                     // At this point we don't really care if it times out or not
