@@ -112,7 +112,7 @@ bool WaitForEeprom(uint32_t drcSlot)
     return true;
 }
 
-bool ReattachDRC(CCRCDCDestination dest, CCRCDCDrcState targetState, BOOL unknown)
+bool ReattachDRC(CCRCDCDestination dest, CCRCDCDrcStateEnum targetState, BOOL unknown)
 {
     // Get the current DRC state
     CCRCDCDrcState state;
@@ -122,19 +122,19 @@ bool ReattachDRC(CCRCDCDestination dest, CCRCDCDrcState targetState, BOOL unknow
     }
 
     // Not sure what state 3 is
-    if (state == CCR_CDC_DRC_STATE_UNK3) {
-        state = CCR_CDC_DRC_STATE_ACTIVE;
+    if (state.state == CCR_CDC_DRC_STATE_UNK3) {
+        state.state = CCR_CDC_DRC_STATE_ACTIVE;
     }
 
     // Nothing to do if we're already in the target state
-    if (state == targetState) {
+    if (state.state == targetState) {
         return true;
     }
 
     __CCRSysInitReattach(dest - CCR_CDC_DESTINATION_DRC0);
 
     // Set target state
-    state = targetState;
+    state.state = targetState;
     res = CCRCDCSysSetDrcState(dest, &state);
     if (res != 0) {
         return false;
@@ -157,7 +157,7 @@ bool ReattachDRC(CCRCDCDestination dest, CCRCDCDrcState targetState, BOOL unknow
         return false;
     }
 
-    if (state != targetState) {
+    if (state.state != targetState) {
         return false;
     }
 
