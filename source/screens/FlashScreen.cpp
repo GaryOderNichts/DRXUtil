@@ -314,8 +314,6 @@ bool FlashScreen::Update(VPADStatus& input)
             break;
         }
         case STATE_PREPARE: {
-            ProcUI::SetHomeButtonMenuEnabled(false);
-
             std::string originalFirmwarePath;
             if (!GetDRCFirmwarePath(originalFirmwarePath)) {
                 mErrorString = "Failed to get original DRC firmware path";
@@ -374,6 +372,8 @@ bool FlashScreen::Update(VPADStatus& input)
             break;
         }
         case STATE_UPDATE: {
+            ProcUI::SetHomeButtonMenuEnabled(false);
+
             if (!CaffeineInvalidate()) {
                 mErrorString = "Failed to invalidate caffeine.";
                 mState = STATE_ERROR;
