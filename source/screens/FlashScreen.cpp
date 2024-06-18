@@ -121,8 +121,7 @@ bool ReattachDRC(CCRCDCDestination dest, CCRCDCDrcStateEnum targetState, BOOL un
         return false;
     }
 
-    // Not sure what state 3 is
-    if (state.state == CCR_CDC_DRC_STATE_UNK3) {
+    if (state.state == CCR_CDC_DRC_STATE_STANDALONE) {
         state.state = CCR_CDC_DRC_STATE_ACTIVE;
     }
 
@@ -384,7 +383,7 @@ bool FlashScreen::Update(VPADStatus& input)
             CCRCDCSoftwareAbort(CCR_CDC_DESTINATION_DRC0);
 
             // Reattach the DRC in update mode
-            if (!ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_UPDATE, FALSE)) {
+            if (!ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_FWUPDATE, FALSE)) {
                 ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                 mErrorString = "Failed to reattach DRC in update mode.";
                 mState = STATE_ERROR;

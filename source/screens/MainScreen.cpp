@@ -84,6 +84,10 @@ bool MainScreen::Update(VPADStatus& input)
         return true;
     }
 
+    if (mStateFailure) {
+        return false;
+    }
+
     MochaUtilsStatus status;
     switch (mState) {
     case STATE_INIT:
