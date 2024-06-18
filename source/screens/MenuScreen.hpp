@@ -21,6 +21,7 @@ private:
         MENU_ID_INFO,
         MENU_ID_FLASH,
         MENU_ID_SET_REGION,
+        MENU_ID_ENABLE_DKMENU,
         MENU_ID_ABOUT,
 
         MENU_ID_MIN = MENU_ID_INFO,
