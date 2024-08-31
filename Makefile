@@ -16,7 +16,7 @@ TOPDIR ?= $(CURDIR)
 APP_NAME		:=	DRXUtil
 APP_SHORTNAME		:=	DRXUtil
 APP_AUTHOR		:=	GaryOderNichts
-APP_VERSION		:=	1.1
+APP_VERSION		:=	1.2
 
 include $(DEVKITPRO)/wut/share/wut_rules
 
@@ -37,7 +37,7 @@ SOURCES		:=	source source/screens
 DATA		:=	data
 INCLUDES	:=	source include
 CONTENT		:=
-ICON		:=	
+ICON		:=
 TV_SPLASH	:=
 DRC_SPLASH	:=
 

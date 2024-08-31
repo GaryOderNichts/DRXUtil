@@ -1,4 +1,4 @@
-#include "FlashScreen.hpp"
+#include "DrcFlashScreen.hpp"
 #include "Gfx.hpp"
 #include "ProcUI.hpp"
 #include "Utils.hpp"
@@ -33,161 +33,16 @@ bool GetDRCFirmwarePath(std::string& path)
     return true;
 }
 
-bool ReadFirmwareHeader(const std::string& path, FlashScreen::FirmwareHeader& header)
-{
-    FILE* f = fopen(path.c_str(), "rb");
-    if (!f) {
-        return false;
-    }
-
-    if (fread(&header, 1, sizeof(header), f) != sizeof(header)) {
-        fclose(f);
-        return false;
-    }
-
-    fclose(f);
-    return true;
-}
-
-bool CopyFile(const std::string& srcPath, const std::string& dstPath)
-{
-    FILE* inf = fopen(srcPath.c_str(), "rb");
-    if (!inf) {
-        return false;
-    }
-
-    FILE* outf = fopen(dstPath.c_str(), "wb");
-    if (!outf) {
-        fclose(inf);
-        return false;
-    }
-
-    uint8_t buf[4096];
-    size_t bytesRead;
-    while ((bytesRead = fread(buf, 1, sizeof(buf), inf)) > 0) {
-        if (fwrite(buf, 1, bytesRead, outf) != bytesRead) {
-            fclose(inf);
-            fclose(outf);
-            return false;
-        }
-    }
-
-    if (ferror(inf)) {
-        fclose(inf);
-        fclose(outf);
-        return false;
-    }
-
-    fclose(inf);
-    fclose(outf);
-    return true;
-}
-
-bool CaffeineInvalidate()
-{
-    CCRCDCSoftwareVersion version;
-    CCRCDCSoftwareGetVersion(CCR_CDC_DESTINATION_DRC0, &version);
-
-    // Only newer versions have caffeine
-    if (version.runningVersion >= 0x180a0000) {
-        return CCRSysCaffeineSetCaffeineSlot(0xff) == 0;
-    }
-
-    return true;
-}
-
-bool WaitForEeprom(uint32_t drcSlot)
-{
-    uint8_t val;
-    OSTime startTime = OSGetSystemTime();
-    while (CCRCFGGetCachedEeprom(drcSlot, 0, &val, sizeof(val)) == -1) {
-        // 2 second timeout
-        if (OSTicksToSeconds(OSGetSystemTime() - startTime) > 2) {
-            return false;
-        }
-
-        OSSleepTicks(OSMillisecondsToTicks(200));
-    }
-
-    return true;
-}
-
-bool ReattachDRC(CCRCDCDestination dest, CCRCDCDrcStateEnum targetState, BOOL unknown)
-{
-    // Get the current DRC state
-    CCRCDCDrcState state;
-    int32_t res = CCRCDCSysGetDrcState(dest, &state);
-    if (res != 0) {
-        return false;
-    }
-
-    if (state.state == CCR_CDC_DRC_STATE_STANDALONE) {
-        state.state = CCR_CDC_DRC_STATE_ACTIVE;
-    }
-
-    // Nothing to do if we're already in the target state
-    if (state.state == targetState) {
-        return true;
-    }
-
-    __CCRSysInitReattach(dest - CCR_CDC_DESTINATION_DRC0);
-
-    // Set target state
-    state.state = targetState;
-    res = CCRCDCSysSetDrcState(dest, &state);
-    if (res != 0) {
-        return false;
-    }
-
-    // Wait for the DRC to reattach
-    res = __CCRSysWaitReattach(dest - CCR_CDC_DESTINATION_DRC0, unknown);
-    if (res != 0) {
-        return false;
-    }
-
-    // Wait for EEPROM
-    if (!WaitForEeprom(dest - CCR_CDC_DESTINATION_DRC0)) {
-        return false;
-    }
-
-    // Check if we're in the state we want
-    res = CCRCDCSysGetDrcState(dest, &state);
-    if (res != 0) {
-        return false;
-    }
-
-    if (state.state != targetState) {
-        return false;
-    }
-
-    return true;
-}
-
-bool AbortUpdate(CCRCDCDestination dest)
-{
-    OSTime startTime = OSGetSystemTime();
-    while (CCRCDCSoftwareAbort(dest) != 0) {
-        // 3 second timeout
-        if (OSTicksToSeconds(OSGetSystemTime() - startTime) > 3) {
-            return false;
-        }
-
-        OSSleepTicks(OSMillisecondsToTicks(200));
-    }
-
-    return true;
-}
-
 void SoftwareUpdateCallback(IOSError error, void* arg)
 {
-    FlashScreen* flashScreen = static_cast<FlashScreen*>(arg);
+    DrcFlashScreen* drcFlashScreen = static_cast<DrcFlashScreen*>(arg);
 
-    flashScreen->OnUpdateCompleted(error);
+    drcFlashScreen->OnUpdateCompleted(error);
 }
 
 }
 
-FlashScreen::FlashScreen()
+DrcFlashScreen::DrcFlashScreen()
  : mFileEntries({
     {FILE_ORIGINAL, {0xf187, "Original Firmware"}},
     {FILE_SDCARD,   {0xf7c2, "From SD Card (\"sd:/drc_fw.bin\")"}},
@@ -195,13 +50,13 @@ FlashScreen::FlashScreen()
 {
 }
 
-FlashScreen::~FlashScreen()
+DrcFlashScreen::~DrcFlashScreen()
 {
 }
 
-void FlashScreen::Draw()
+void DrcFlashScreen::Draw()
 {
-    DrawTopBar("FlashScreen");
+    DrawTopBar("DrcFlashScreen");
 
     switch (mState)
     {
@@ -275,7 +130,7 @@ void FlashScreen::Draw()
     }
 }
 
-bool FlashScreen::Update(VPADStatus& input)
+bool DrcFlashScreen::Update(VPADStatus& input)
 {
     switch (mState)
     {
@@ -330,8 +185,8 @@ bool FlashScreen::Update(VPADStatus& input)
             std::string doptPath = originalFirmwarePath;
             doptPath.replace(prefixPos, sizeof("/vol/storage_mlc01") - 1, "storage_mlc01:");
 
-            FirmwareHeader originalFirmwareHeader;
-            if (!ReadFirmwareHeader(doptPath, originalFirmwareHeader)) {
+            FlashUtils::FirmwareHeader originalFirmwareHeader;
+            if (!flashUtils.ReadFirmwareHeader(doptPath, originalFirmwareHeader)) {
                 mErrorString = "Failed to read original DRC firmware header";
                 mState = STATE_ERROR;
                 break;
@@ -341,28 +196,40 @@ bool FlashScreen::Update(VPADStatus& input)
                 mFirmwarePath = originalFirmwarePath;
                 mFirmwareHeader = originalFirmwareHeader;
             } else if (mFile == FILE_SDCARD) {
-                if (!ReadFirmwareHeader("/vol/external01/drc_fw.bin", mFirmwareHeader)) {
+                if (!flashUtils.ReadFirmwareHeader("/vol/external01/drc_fw.bin", mFirmwareHeader)) {
                     mErrorString = "Failed to read DRC firmware header";
                     mState = STATE_ERROR;
                     break;
                 }
-
+/*
                 // Don't allow downgrading lower than the version on NAND,
                 // otherwise this might cause bricks without flashing the language files?
                 if (mFirmwareHeader.version < originalFirmwareHeader.version) {
                     mErrorString = Utils::sprintf("Not allowing versions lower than version on NAND.\n(Firmware 0x%08x Original 0x%08x)", mFirmwareHeader.version, originalFirmwareHeader.version);
                     mState = STATE_ERROR;
                     break;
-                }
+                }*/
 
                 // Copy to MLC so IOS-PAD can install it
                 mFirmwarePath = "/vol/storage_mlc01/usr/tmp/drc_fw.bin";
-                if (!CopyFile("/vol/external01/drc_fw.bin", "storage_mlc01:/usr/tmp/drc_fw.bin")) {
+                if (!flashUtils.CopyFile("/vol/external01/drc_fw.bin", "storage_mlc01:/usr/tmp/drc_fw.bin")) {
                     mErrorString = "Failed to copy firmware to MLC";
                     mState = STATE_ERROR;
                     break;
                 }
             } else {
+                mState = STATE_ERROR;
+                break;
+            }
+            
+            uint32_t extId = 0;
+            if (CCRCDCSoftwareGetExtId(CCR_CDC_DESTINATION_DRC0, CCR_CDC_EXT_LANGUAGE, &extId) != 0) {
+                mErrorString = "Failed to get DRC language version!";
+                mState = STATE_ERROR;
+                break;  
+            }
+            if (!flashUtils.CheckVersionSafety(mFirmwareHeader.version, extId)) {
+                mErrorString = "Firmware version not valid for the DRC language!";
                 mState = STATE_ERROR;
                 break;
             }
@@ -373,7 +240,7 @@ bool FlashScreen::Update(VPADStatus& input)
         case STATE_UPDATE: {
             ProcUI::SetHomeButtonMenuEnabled(false);
 
-            if (!CaffeineInvalidate()) {
+            if (!flashUtils.CaffeineInvalidate()) {
                 mErrorString = "Failed to invalidate caffeine.";
                 mState = STATE_ERROR;
                 break;  
@@ -383,8 +250,8 @@ bool FlashScreen::Update(VPADStatus& input)
             CCRCDCSoftwareAbort(CCR_CDC_DESTINATION_DRC0);
 
             // Reattach the DRC in update mode
-            if (!ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_FWUPDATE, FALSE)) {
-                ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
+            if (!flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_FWUPDATE, FALSE)) {
+                flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                 mErrorString = "Failed to reattach DRC in update mode.";
                 mState = STATE_ERROR;
                 break;  
@@ -394,8 +261,8 @@ bool FlashScreen::Update(VPADStatus& input)
             mUpdateComplete = false;
             mUpdateResult = 0;
             if (CCRCDCSoftwareUpdate(CCR_CDC_DESTINATION_DRC0, mFirmwarePath.c_str(), SoftwareUpdateCallback, this) != 0) {
-                AbortUpdate(CCR_CDC_DESTINATION_DRC0);
-                ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
+                flashUtils.AbortUpdate(CCR_CDC_DESTINATION_DRC0);
+                flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                 mErrorString = "Failed to start software update.";
                 mState = STATE_ERROR;
                 break;  
@@ -418,8 +285,8 @@ bool FlashScreen::Update(VPADStatus& input)
                 if (mUpdateResult == IOS_ERROR_OK) {
                     mState = STATE_ACTIVATE;
                 } else {
-                    AbortUpdate(CCR_CDC_DESTINATION_DRC0);
-                    ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
+                    flashUtils.AbortUpdate(CCR_CDC_DESTINATION_DRC0);
+                    flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                     mErrorString = "Software update failed.";
                     mState = STATE_ERROR;
                 }
@@ -429,8 +296,8 @@ bool FlashScreen::Update(VPADStatus& input)
         case STATE_ACTIVATE: {
             // Activate the newly flashed firmware
             if (CCRCDCSoftwareActivate(CCR_CDC_DESTINATION_DRC0) != 0) {
-                AbortUpdate(CCR_CDC_DESTINATION_DRC0);
-                ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
+                flashUtils.AbortUpdate(CCR_CDC_DESTINATION_DRC0);
+                flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                 mErrorString = "Failed to activate software update.";
                 mState = STATE_ERROR;
                 break;  
@@ -438,7 +305,7 @@ bool FlashScreen::Update(VPADStatus& input)
 
             // Put the gamepad back into active mode
             OSTime startTime = OSGetSystemTime();
-            while (!ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE)) {
+            while (!flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE)) {
                 // 10 second timeout
                 if (OSTicksToSeconds(OSGetSystemTime() - startTime) > 10) {
                     // At this point we don't really care if it times out or not
@@ -473,7 +340,7 @@ bool FlashScreen::Update(VPADStatus& input)
     return true;
 }
 
-void FlashScreen::OnUpdateCompleted(int32_t result)
+void DrcFlashScreen::OnUpdateCompleted(int32_t result)
 {
     mUpdateComplete = true;
     mUpdateResult = result;

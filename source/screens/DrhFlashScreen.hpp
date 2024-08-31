@@ -1,21 +1,15 @@
 #pragma once
 
 #include "Screen.hpp"
+#include "FlashUtils.hpp"
 #include <map>
 
-class FlashScreen : public Screen
+class DrhFlashScreen : public Screen
 {
-public:
-    struct FirmwareHeader {
-        uint32_t version;
-        uint32_t blockSize;
-        uint32_t sequencePerSession;
-        uint32_t imageSize;
-    };
 
 public:
-    FlashScreen();
-    virtual ~FlashScreen();
+    DrhFlashScreen();
+    virtual ~DrhFlashScreen();
 
     void Draw();
 
@@ -25,8 +19,6 @@ public:
 
 private:
     enum State {
-        STATE_SELECT_FILE,
-        STATE_CONFIRM,
         STATE_PREPARE,
         STATE_CONFIRM2,
         STATE_UPDATE,
@@ -34,7 +26,7 @@ private:
         STATE_ACTIVATE,
         STATE_DONE,
         STATE_ERROR,
-    } mState = STATE_SELECT_FILE;
+    } mState = STATE_PREPARE;
 
     enum FileID {
         FILE_ORIGINAL,
@@ -48,7 +40,7 @@ private:
 
     std::string mErrorString;
     std::string mFirmwarePath;
-    FirmwareHeader mFirmwareHeader;
+    FlashUtils::FirmwareHeader mFirmwareHeader;
 
     int32_t mFlashingProgress;
     bool mUpdateComplete;

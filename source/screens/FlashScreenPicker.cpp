@@ -1,36 +1,36 @@
-#include "MenuScreen.hpp"
-#include "Gfx.hpp"
-#include "AboutScreen.hpp"
 #include "FlashScreenPicker.hpp"
-#include "DrcScreenPicker.hpp"
-#include "InfoScreen.hpp"
+#include "DrhFlashScreen.hpp"
+#include "DrcFlashScreen.hpp"
+#include "DrcLangScreen.hpp"
+#include "DrcFFlashScreen.hpp"
+#include "Gfx.hpp"
 
 #include <vector>
 
-MenuScreen::MenuScreen()
+FlashScreenPicker::FlashScreenPicker()
  : mEntries({
-        { MENU_ID_INFO,       { 0xf085, "Show DRC/DRH information" }},
-        { MENU_ID_FLASH,      { 0xf019, "Flash..."}},
-        { MENU_ID_DRCOPS,     { 0xf10a, "DRC operations..."}},
-        { MENU_ID_ABOUT,      { 0xf05a, "About DRXUtil" }},
+        { MENU_ID_DRHFLASH,       { 0xf085, "Flash DRH firmware" }},
+        { MENU_ID_DRCFLASH,      { 0xf1c9, "Flash DRC firmware" }},
+        { MENU_ID_DRCLANG,      { 0xf302, "Flash DRC language" }},
+        { MENU_ID_DRCFFLASH,      { 0xe4c7, "Flash DRC fully" }},
         // { MENU_ID_EXIT,    { 0xf057, "Exit" }},
     })
 {
 
 }
 
-MenuScreen::~MenuScreen()
+FlashScreenPicker::~FlashScreenPicker()
 {
 }
 
-void MenuScreen::Draw()
+void FlashScreenPicker::Draw()
 {
     if (mSubscreen) {
         mSubscreen->Draw();
         return;
     }
 
-    DrawTopBar(nullptr);
+    DrawTopBar("FlashScreenPicker");
 
     // draw entries
     for (MenuID id = MENU_ID_MIN; id <= MENU_ID_MAX; id = static_cast<MenuID>(id + 1)) {
@@ -44,10 +44,10 @@ void MenuScreen::Draw()
         }
     }
 
-    DrawBottomBar("\ue07d Navigate", "\ue044 Exit", "\ue000 Select");
+    DrawBottomBar("\ue07d Navigate", "\ue044 Exit", "\ue000 Select / \ue001 Back");
 }
 
-bool MenuScreen::Update(VPADStatus& input)
+bool FlashScreenPicker::Update(VPADStatus& input)
 {
     if (mSubscreen) {
         if (!mSubscreen->Update(input)) {
@@ -69,20 +69,23 @@ bool MenuScreen::Update(VPADStatus& input)
 
     if (input.trigger & VPAD_BUTTON_A) {
         switch (mSelected) {
-        case MENU_ID_INFO:
-            mSubscreen = std::make_unique<InfoScreen>();
+        case MENU_ID_DRHFLASH:
+            mSubscreen = std::make_unique<DrhFlashScreen>();
             break;
-        case MENU_ID_FLASH:
-            mSubscreen = std::make_unique<FlashScreenPicker>();
+        case MENU_ID_DRCFLASH:
+            mSubscreen = std::make_unique<DrcFlashScreen>();
             break;
-        case MENU_ID_DRCOPS:
-            mSubscreen = std::make_unique<DrcScreenPicker>();
+        case MENU_ID_DRCLANG:
+            mSubscreen = std::make_unique<DrcLangScreen>();
             break;
-        case MENU_ID_ABOUT:
-            mSubscreen = std::make_unique<AboutScreen>();
+        case MENU_ID_DRCFFLASH:
+            mSubscreen = std::make_unique<DrcFFlashScreen>();
             break;
         }
     }
-
+    
+    if (input.trigger & VPAD_BUTTON_B) {
+                return false;
+            }
     return true;
 }

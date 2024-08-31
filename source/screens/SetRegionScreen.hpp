@@ -34,4 +34,6 @@ private:
         REGION_AUSTRALIA     = 6,
     } mRegion = REGION_JAPAN;
     std::map<Region, std::string> mRegionEntries;
+
+    std::string mErrorText;
 };

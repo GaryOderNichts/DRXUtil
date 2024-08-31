@@ -1,36 +1,37 @@
-#include "MenuScreen.hpp"
-#include "Gfx.hpp"
-#include "AboutScreen.hpp"
-#include "FlashScreenPicker.hpp"
 #include "DrcScreenPicker.hpp"
-#include "InfoScreen.hpp"
+#include "SetRegionScreen.hpp"
+#include "EepromScreen.hpp"
+#include "PairScreen.hpp"
+#include "EnableDKMenuScreen.hpp"
+#include "FormatScreen.hpp"
+#include "Gfx.hpp"
 
 #include <vector>
 
-MenuScreen::MenuScreen()
+DrcScreenPicker::DrcScreenPicker()
  : mEntries({
-        { MENU_ID_INFO,       { 0xf085, "Show DRC/DRH information" }},
-        { MENU_ID_FLASH,      { 0xf019, "Flash..."}},
-        { MENU_ID_DRCOPS,     { 0xf10a, "DRC operations..."}},
-        { MENU_ID_ABOUT,      { 0xf05a, "About DRXUtil" }},
-        // { MENU_ID_EXIT,    { 0xf057, "Exit" }},
+        { MENU_ID_SET_REGION,       { 0xf0ac, "Set region" }},
+        { MENU_ID_DUMP_EEPROM,      { 0xf08b, "Dump EEPROMs" }},
+        { MENU_ID_DRC_PAIR,         { 0xf0c1, "Pair DRC..." }},
+        { MENU_ID_ENABLE_DKMENU,    { 0xf188, "Enable DK Menu" }},
+        { MENU_ID_DRC_RESET,        { 0xf079, "Reset DRC" }},
     })
 {
 
 }
 
-MenuScreen::~MenuScreen()
+DrcScreenPicker::~DrcScreenPicker()
 {
 }
 
-void MenuScreen::Draw()
+void DrcScreenPicker::Draw()
 {
     if (mSubscreen) {
         mSubscreen->Draw();
         return;
     }
 
-    DrawTopBar(nullptr);
+    DrawTopBar("DrcScreenPicker");
 
     // draw entries
     for (MenuID id = MENU_ID_MIN; id <= MENU_ID_MAX; id = static_cast<MenuID>(id + 1)) {
@@ -44,10 +45,10 @@ void MenuScreen::Draw()
         }
     }
 
-    DrawBottomBar("\ue07d Navigate", "\ue044 Exit", "\ue000 Select");
+    DrawBottomBar("\ue07d Navigate", "\ue044 Exit", "\ue000 Select / \ue001 Back");
 }
 
-bool MenuScreen::Update(VPADStatus& input)
+bool DrcScreenPicker::Update(VPADStatus& input)
 {
     if (mSubscreen) {
         if (!mSubscreen->Update(input)) {
@@ -69,20 +70,26 @@ bool MenuScreen::Update(VPADStatus& input)
 
     if (input.trigger & VPAD_BUTTON_A) {
         switch (mSelected) {
-        case MENU_ID_INFO:
-            mSubscreen = std::make_unique<InfoScreen>();
+        case MENU_ID_SET_REGION:
+            mSubscreen = std::make_unique<SetRegionScreen>();
             break;
-        case MENU_ID_FLASH:
-            mSubscreen = std::make_unique<FlashScreenPicker>();
+        case MENU_ID_DUMP_EEPROM:
+            mSubscreen = std::make_unique<EepromScreen>();
             break;
-        case MENU_ID_DRCOPS:
-            mSubscreen = std::make_unique<DrcScreenPicker>();
+        case MENU_ID_DRC_PAIR:
+            mSubscreen = std::make_unique<PairScreen>();
             break;
-        case MENU_ID_ABOUT:
-            mSubscreen = std::make_unique<AboutScreen>();
+        case MENU_ID_ENABLE_DKMENU:
+            mSubscreen = std::make_unique<EnableDKMenuScreen>();
+            break;
+        case MENU_ID_DRC_RESET:
+            mSubscreen = std::make_unique<FormatScreen>();
             break;
         }
     }
-
+    
+    if (input.trigger & VPAD_BUTTON_B) {
+                return false;
+            }
     return true;
 }

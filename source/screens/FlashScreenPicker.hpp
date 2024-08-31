@@ -4,11 +4,11 @@
 #include <memory>
 #include <map>
 
-class MenuScreen : public Screen
+class FlashScreenPicker : public Screen
 {
 public:
-    MenuScreen();
-    virtual ~MenuScreen();
+    FlashScreenPicker();
+    virtual ~FlashScreenPicker();
 
     void Draw();
 
@@ -18,13 +18,13 @@ private:
     std::unique_ptr<Screen> mSubscreen;
 
     enum MenuID {
-        MENU_ID_INFO,
-        MENU_ID_FLASH,
-        MENU_ID_DRCOPS,
-        MENU_ID_ABOUT,
+        MENU_ID_DRHFLASH,
+        MENU_ID_DRCFLASH,
+        MENU_ID_DRCLANG,
+        MENU_ID_DRCFFLASH,
 
-        MENU_ID_MIN = MENU_ID_INFO,
-        MENU_ID_MAX = MENU_ID_ABOUT,
+        MENU_ID_MIN = MENU_ID_DRHFLASH,
+        MENU_ID_MAX = MENU_ID_DRCFFLASH,
     };
 
     struct MenuEntry {
