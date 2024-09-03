@@ -1,4 +1,4 @@
-#include "DrcFFlashScreen.hpp"
+#include "DrcFullFlashScreen.hpp"
 #include "Gfx.hpp"
 #include "ProcUI.hpp"
 #include "Utils.hpp"
@@ -15,20 +15,20 @@ namespace {
 
 void SoftwareUpdateCallback(IOSError error, void* arg)
 {
-    DrcFFlashScreen* drcFFlashScreen = static_cast<DrcFFlashScreen*>(arg);
+    DrcFullFlashScreen* drcFullFlashScreen = static_cast<DrcFullFlashScreen*>(arg);
 
-    drcFFlashScreen->OnUpdateCompleted(error);
+    drcFullFlashScreen->OnUpdateCompleted(error);
 }
 
 }
 
-DrcFFlashScreen::~DrcFFlashScreen()
+DrcFullFlashScreen::~DrcFullFlashScreen()
 {
 }
 
-void DrcFFlashScreen::Draw()
+void DrcFullFlashScreen::Draw()
 {
-    DrawTopBar("DrcFFlashScreen");
+    DrawTopBar("DrcFullFlashScreen");
 
     switch (mState)
     {
@@ -87,7 +87,7 @@ void DrcFFlashScreen::Draw()
     }
 }
 
-bool DrcFFlashScreen::Update(VPADStatus& input) // Here is the core logic
+bool DrcFullFlashScreen::Update(VPADStatus& input) // Here is the core logic
 {
     flashUtils.ReadFirmwareHeader("/vol/external01/lang.bin", mLanguageHeader);
     uint32_t targetVersion = mLanguageHeader.version; // We will read this value later
@@ -277,7 +277,7 @@ bool DrcFFlashScreen::Update(VPADStatus& input) // Here is the core logic
     return true;
 }
 
-void DrcFFlashScreen::OnUpdateCompleted(int32_t result)
+void DrcFullFlashScreen::OnUpdateCompleted(int32_t result)
 {
     mUpdateComplete = true;
     mUpdateResult = result;

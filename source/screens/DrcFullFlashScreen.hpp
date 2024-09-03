@@ -3,11 +3,10 @@
 #include "Screen.hpp"
 #include "FlashUtils.hpp"
 
-class DrcFFlashScreen : public Screen
+class DrcFullFlashScreen : public Screen
 {
 public:
-//    DrcLangScreen();
-    virtual ~DrcFFlashScreen();
+    virtual ~DrcFullFlashScreen();
 
     void Draw();
 
