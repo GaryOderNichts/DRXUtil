@@ -105,14 +105,14 @@ bool DrhFlashScreen::Update(VPADStatus& input)
             break;
         }
         case STATE_PREPARE: {
-            if (!flashUtils.ReadFirmwareHeader("/vol/external01/drh_fw.bin", mFirmwareHeader)) {
+            if (!FlashUtils::ReadFirmwareHeader("/vol/external01/drh_fw.bin", mFirmwareHeader)) {
                 mErrorString = "Failed to read DRH firmware header";
                 mState = STATE_ERROR;
                 break;
             }
                 // Copy to MLC so IOS-PAD can install it
             mFirmwarePath = "/vol/storage_mlc01/usr/tmp/drh_fw.bin";
-            if (!flashUtils.CopyFile("/vol/external01/drh_fw.bin", "storage_mlc01:/usr/tmp/drh_fw.bin")) {
+            if (!FlashUtils::CopyFile("/vol/external01/drh_fw.bin", "storage_mlc01:/usr/tmp/drh_fw.bin")) {
                 mErrorString = "Failed to copy firmware to MLC";
                 mState = STATE_ERROR;
                 break;
@@ -123,7 +123,7 @@ bool DrhFlashScreen::Update(VPADStatus& input)
         case STATE_UPDATE: {
             ProcUI::SetHomeButtonMenuEnabled(false);
 
-            if (!flashUtils.CaffeineInvalidate()) {
+            if (!FlashUtils::CaffeineInvalidate()) {
                 mErrorString = "Failed to invalidate caffeine.";
                 mState = STATE_ERROR;
                 break;  
@@ -136,8 +136,8 @@ bool DrhFlashScreen::Update(VPADStatus& input)
             mUpdateComplete = false;
             mUpdateResult = 0;
             if (CCRCDCSoftwareUpdate(CCR_CDC_DESTINATION_DRH, mFirmwarePath.c_str(), SoftwareUpdateCallback, this) != 0) {
-                flashUtils.AbortUpdate(CCR_CDC_DESTINATION_DRH);
-                flashUtils.ReattachDRH(CCR_CDC_SYS_DRH_STATE_CAFE, FALSE);
+                FlashUtils::AbortUpdate(CCR_CDC_DESTINATION_DRH);
+                FlashUtils::ReattachDRH(CCR_CDC_SYS_DRH_STATE_CAFE, FALSE);
                 mErrorString = "Failed to start software update.";
                 mState = STATE_ERROR;
                 break;  
@@ -160,8 +160,8 @@ bool DrhFlashScreen::Update(VPADStatus& input)
                 if (mUpdateResult == IOS_ERROR_OK) {
                     mState = STATE_ACTIVATE;
                 } else {
-                    flashUtils.AbortUpdate(CCR_CDC_DESTINATION_DRH);
-                    flashUtils.ReattachDRH(CCR_CDC_SYS_DRH_STATE_CAFE, FALSE);
+                    FlashUtils::AbortUpdate(CCR_CDC_DESTINATION_DRH);
+                    FlashUtils::ReattachDRH(CCR_CDC_SYS_DRH_STATE_CAFE, FALSE);
                     mErrorString = "Software update failed - error " + std::to_string(mUpdateResult);
                     mState = STATE_ERROR;
                 }
@@ -171,8 +171,8 @@ bool DrhFlashScreen::Update(VPADStatus& input)
         case STATE_ACTIVATE: {
             // Activate the newly flashed firmware
             if (CCRCDCSoftwareActivate(CCR_CDC_DESTINATION_DRH) != 0) {
-                flashUtils.AbortUpdate(CCR_CDC_DESTINATION_DRH);
-                flashUtils.ReattachDRH(CCR_CDC_SYS_DRH_STATE_CAFE, FALSE);
+                FlashUtils::AbortUpdate(CCR_CDC_DESTINATION_DRH);
+                FlashUtils::ReattachDRH(CCR_CDC_SYS_DRH_STATE_CAFE, FALSE);
                 mErrorString = "Failed to activate software update.";
                 mState = STATE_ERROR;
                 break;  
@@ -180,7 +180,7 @@ bool DrhFlashScreen::Update(VPADStatus& input)
 
             // Put the DRH back into active mode
             OSTime startTime = OSGetSystemTime();
-            while (!flashUtils.ReattachDRH(CCR_CDC_SYS_DRH_STATE_CAFE, FALSE)) {
+            while (!FlashUtils::ReattachDRH(CCR_CDC_SYS_DRH_STATE_CAFE, FALSE)) {
                 // 10 second timeout
                 if (OSTicksToSeconds(OSGetSystemTime() - startTime) > 10) {
                     // At this point we don't really care if it times out or not

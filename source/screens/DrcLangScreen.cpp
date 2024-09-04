@@ -82,7 +82,7 @@ void DrcLangScreen::Draw()
 
 bool DrcLangScreen::Update(VPADStatus& input)
 {
-    flashUtils.ReadFirmwareHeader("/vol/external01/lang.bin", mFirmwareHeader);
+    FlashUtils::ReadFirmwareHeader("/vol/external01/lang.bin", mFirmwareHeader);
     uint32_t targetVersion = mFirmwareHeader.version;
     switch (mState)
     {
@@ -102,14 +102,14 @@ bool DrcLangScreen::Update(VPADStatus& input)
                 // Writing only language, must obtain firmware from DRC
                 CCRCDCSoftwareVersion deviceVersion;
                 CCRCDCSoftwareGetVersion(CCR_CDC_DESTINATION_DRC0, &deviceVersion);
-                if (!flashUtils.CheckVersionSafety(deviceVersion.runningVersion, targetVersion)) {
+                if (!FlashUtils::CheckVersionSafety(deviceVersion.runningVersion, targetVersion)) {
                     mErrorString = "Language version not valid for the DRC firmware!";
                     mState = STATE_ERROR;
                     break;
                 }
                 // Copy to MLC so IOS-PAD can install it
                 mFirmwarePath = "/vol/storage_mlc01/usr/tmp/lang.bin";
-                if (!flashUtils.CopyFile("/vol/external01/lang.bin", "storage_mlc01:/usr/tmp/lang.bin")) {
+                if (!FlashUtils::CopyFile("/vol/external01/lang.bin", "storage_mlc01:/usr/tmp/lang.bin")) {
                     mErrorString = "Failed to copy firmware to MLC";
                     mState = STATE_ERROR;
                     break;
@@ -120,7 +120,7 @@ bool DrcLangScreen::Update(VPADStatus& input)
         case STATE_UPDATE: {
             ProcUI::SetHomeButtonMenuEnabled(false);
 
-            if (!flashUtils.CaffeineInvalidate()) {
+            if (!FlashUtils::CaffeineInvalidate()) {
                 mErrorString = "Failed to invalidate caffeine.";
                 mState = STATE_ERROR;
                 break;  
@@ -130,8 +130,8 @@ bool DrcLangScreen::Update(VPADStatus& input)
             CCRCDCSoftwareAbort(CCR_CDC_DESTINATION_DRC0);
 
             // Reattach the DRC in update mode
-            if (!flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_FWUPDATE, FALSE)) {
-                flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
+            if (!FlashUtils::ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_FWUPDATE, FALSE)) {
+                FlashUtils::ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                 mErrorString = "Failed to reattach DRC in update mode.";
                 mState = STATE_ERROR;
                 break;  
@@ -141,8 +141,8 @@ bool DrcLangScreen::Update(VPADStatus& input)
             mUpdateComplete = false;
             mUpdateResult = 0;
             if (CCRCDCSoftwareLangUpdate(CCR_CDC_DESTINATION_DRC0, mFirmwarePath.c_str(), &targetVersion, SoftwareUpdateCallback, this) != 0) {
-                flashUtils.AbortUpdate(CCR_CDC_DESTINATION_DRC0);
-                flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
+                FlashUtils::AbortUpdate(CCR_CDC_DESTINATION_DRC0);
+                FlashUtils::ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                 mErrorString = "Failed to start software update.";
                 mState = STATE_ERROR;
                 break;  
@@ -165,8 +165,8 @@ bool DrcLangScreen::Update(VPADStatus& input)
                 if (mUpdateResult == IOS_ERROR_OK) {
                     mState = STATE_ACTIVATE;
                 } else {
-                    flashUtils.AbortUpdate(CCR_CDC_DESTINATION_DRC0);
-                    flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
+                    FlashUtils::AbortUpdate(CCR_CDC_DESTINATION_DRC0);
+                    FlashUtils::ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                     mErrorString = "Software update failed.";
                     mState = STATE_ERROR;
                 }
@@ -178,8 +178,8 @@ bool DrcLangScreen::Update(VPADStatus& input)
             uint32_t langActivateSuccess = 0;
             CCRCDCSoftwareLangActivate(CCR_CDC_DESTINATION_DRC0, targetVersion, &langActivateSuccess);
             if (langActivateSuccess != 0) {
-                flashUtils.AbortUpdate(CCR_CDC_DESTINATION_DRC0);
-                flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
+                FlashUtils::AbortUpdate(CCR_CDC_DESTINATION_DRC0);
+                FlashUtils::ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE);
                 mErrorString = "Failed to activate software update.";
                 mState = STATE_ERROR;
                 break;  
@@ -187,7 +187,7 @@ bool DrcLangScreen::Update(VPADStatus& input)
 
             // Put the gamepad back into active mode
             OSTime startTime = OSGetSystemTime();
-            while (!flashUtils.ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE)) {
+            while (!FlashUtils::ReattachDRC(CCR_CDC_DESTINATION_DRC0, CCR_CDC_DRC_STATE_ACTIVE, FALSE)) {
                 // 10 second timeout
                 if (OSTicksToSeconds(OSGetSystemTime() - startTime) > 10) {
                     // At this point we don't really care if it times out or not

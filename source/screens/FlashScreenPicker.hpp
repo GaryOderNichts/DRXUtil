@@ -21,10 +21,10 @@ private:
         MENU_ID_DRHFLASH,
         MENU_ID_DRCFLASH,
         MENU_ID_DRCLANG,
-        MENU_ID_DRCFFLASH,
+        MENU_ID_DRCFULLFLASH,
 
         MENU_ID_MIN = MENU_ID_DRHFLASH,
-        MENU_ID_MAX = MENU_ID_DRCFFLASH,
+        MENU_ID_MAX = MENU_ID_DRCFULLFLASH,
     };
 
     struct MenuEntry {

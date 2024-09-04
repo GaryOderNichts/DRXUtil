@@ -2,7 +2,7 @@
 #include "DrhFlashScreen.hpp"
 #include "DrcFlashScreen.hpp"
 #include "DrcLangScreen.hpp"
-#include "DrcFFlashScreen.hpp"
+#include "DrcFullFlashScreen.hpp"
 #include "Gfx.hpp"
 
 #include <vector>
@@ -12,7 +12,7 @@ FlashScreenPicker::FlashScreenPicker()
         { MENU_ID_DRHFLASH,       { 0xf085, "Flash DRH firmware" }},
         { MENU_ID_DRCFLASH,      { 0xf1c9, "Flash DRC firmware" }},
         { MENU_ID_DRCLANG,      { 0xf302, "Flash DRC language" }},
-        { MENU_ID_DRCFFLASH,      { 0xe4c7, "Flash DRC fully" }},
+        { MENU_ID_DRCFULLFLASH,      { 0xe4c7, "Flash DRC fully" }},
         // { MENU_ID_EXIT,    { 0xf057, "Exit" }},
     })
 {
@@ -78,8 +78,8 @@ bool FlashScreenPicker::Update(VPADStatus& input)
         case MENU_ID_DRCLANG:
             mSubscreen = std::make_unique<DrcLangScreen>();
             break;
-        case MENU_ID_DRCFFLASH:
-            mSubscreen = std::make_unique<DrcFFlashScreen>();
+        case MENU_ID_DRCFULLFLASH:
+            mSubscreen = std::make_unique<DrcFullFlashScreen>();
             break;
         }
     }

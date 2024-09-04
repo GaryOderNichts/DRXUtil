@@ -207,11 +207,3 @@ bool FlashUtils::AbortUpdate(CCRCDCDestination dest)
 
     return true;
 }
-/*
-void SoftwareUpdateCallback(IOSError error, void* arg)
-{
-    FlashUtils* flashUtils = static_cast<FlashUtils*>(arg);
-
-    flashUtils->OnUpdateCompleted(error);
-}
-*/
