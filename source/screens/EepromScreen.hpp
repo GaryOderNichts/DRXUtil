@@ -13,8 +13,6 @@ public:
 
     bool Update(VPADStatus& input);
 
-    void OnDumpCompleted();
-
 private:
     enum State {
         STATE_DUMP,
@@ -23,7 +21,5 @@ private:
     } mState = STATE_DUMP;
 
     std::string mErrorString;
-    
 
-    bool mDumpComplete;
 };

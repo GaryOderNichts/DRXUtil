@@ -112,8 +112,3 @@ bool EepromScreen::Update(VPADStatus& input) // This is the core logic part
 
     return true;
 }
-
-void EepromScreen::OnDumpCompleted()
-{
-    mDumpComplete = true;
-}
