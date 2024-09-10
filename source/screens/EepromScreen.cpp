@@ -12,13 +12,13 @@
 
 namespace {
 
-bool WriteFile(const void *source, const std::string& dstPath)
+bool WriteFile(const void *source, const size_t length, const std::string& dstPath)
 {
     FILE* outf = fopen(dstPath.c_str(), "wb");
     if (!outf) {
         return false;
     }
-        if (fwrite(&source, 1, 4096, outf) != 0) { // DRC EEPROM size up until "DEADBABE" string appears to be 5E0h bytes, unless you dump the 2nd DRC. What the hell does it add..?
+        if (fwrite(&source, 1, length, outf) != 0) { // DRC EEPROM size up until "DEADBABE" string appears to be 5E0h bytes, unless you dump the 2nd DRC. What the hell does it add..?
             fclose(outf);
             return false;
         }
@@ -78,7 +78,7 @@ bool EepromScreen::Update(VPADStatus& input) // This is the core logic part
             //    versionarray0[i] = ((uint8_t*)&readout0.version)[3-i];
             //memcpy(&readoutarray0[0], versionarray0, 4);
             //memcpy(&readoutarray0[4], readout0.data, 0x300);
-            WriteFile(&readout0, "/vol/external01/eeprom0.bin");
+            WriteFile(&readout0, 0x304, "/vol/external01/eeprom0.bin");
             // If we read the DRC1 EEPROM
             if(CCRCDCPerGetUicEeprom(CCR_CDC_DESTINATION_DRC1, &readout1) == 0){
             	//uint8_t versionarray1[4];
@@ -86,7 +86,7 @@ bool EepromScreen::Update(VPADStatus& input) // This is the core logic part
                 //    versionarray1[i] = ((uint8_t*)&readout1.version)[3-i];
                 //memcpy(&readoutarray1[0], versionarray1, 4);
                 //memcpy(&readoutarray1[4], readout1.data, 0x300);
-                WriteFile(&readout1, "/vol/external01/eeprom1.bin");
+                WriteFile(&readout1, 0x304, "/vol/external01/eeprom1.bin");
             }
             mState = STATE_DONE;
             break;
