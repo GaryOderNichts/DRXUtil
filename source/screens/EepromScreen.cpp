@@ -12,16 +12,21 @@
 
 namespace {
 
-bool WriteFile(const void *source, const size_t length, const std::string& dstPath)
+bool WriteFile(const void *source, const std::string& dstPath)
 {
     FILE* outf = fopen(dstPath.c_str(), "wb");
     if (!outf) {
         return false;
     }
-        if (fwrite(&source, 1, length, outf) != 0) { // DRC EEPROM size up until "DEADBABE" string appears to be 5E0h bytes, unless you dump the 2nd DRC. What the hell does it add..?
-            fclose(outf);
-            return false;
-        }
+    // Developer observations:
+    // DRC EEPROM size up until "DEADBABE" string appears to be 5E0h bytes. The DK menu says it is 600h bytes.
+    // The real EEPROM size should be 304h bytes.
+    // If you dump the 2nd DRC, for some reason data for the 1st DRC will be appended too.
+    // For our needs hardcoding the size to 304h bytes is going to be sufficient.
+    if (fwrite(source, 1, 0x304, outf) != 0) { 
+        fclose(outf);
+        return false;
+    }
 
     fclose(outf);
     return true;
@@ -43,7 +48,11 @@ void EepromScreen::Draw()
         }
         case STATE_DONE: {
             Gfx::Print(Gfx::SCREEN_WIDTH / 2, Gfx::SCREEN_HEIGHT / 2, 64, Gfx::COLOR_TEXT,
-                Utils::sprintf("Saved to eeprom0.bin\nPress B"),
+                Utils::sprintf(
+                    "Saved to eeprom0.bin",
+                    drc1_read ? " and eeprom1.bin\n" : "\n",
+                    "Press B"
+                ),
                 Gfx::ALIGN_CENTER);
             break;
         }
@@ -62,31 +71,24 @@ bool EepromScreen::Update(VPADStatus& input) // This is the core logic part
     {
         case STATE_DUMP: {
             CCRCDCEepromData readout0;
-            //uint8_t readoutarray0[0x304];
             CCRCDCEepromData readout1; // If a 2nd DRC is present, we will write this
-            //uint8_t readoutarray1[0x304];
             // Read EEPROM
-            if(CCRCDCPerGetUicEeprom(CCR_CDC_DESTINATION_DRC0, &readout0) != 0){
+            if(CCRCDCPerGetUicEeprom(CCR_CDC_DESTINATION_DRC0, &readout0)){
             	mErrorString = "Read failed!";
                 mState = STATE_ERROR;
                 break;
             }
-            // Write to SD card
-            // Convert to uint8_t so that this can be processed by fwrite
-            //uint8_t versionarray0[4];
-            //for (int i=0; i<4 ;++i)
-            //    versionarray0[i] = ((uint8_t*)&readout0.version)[3-i];
-            //memcpy(&readoutarray0[0], versionarray0, 4);
-            //memcpy(&readoutarray0[4], readout0.data, 0x300);
-            WriteFile(&readout0, 0x304, "/vol/external01/eeprom0.bin");
+            // Write to SD card 
+            WriteFile(&readout0, "/vol/external01/eeprom0.bin");
             // If we read the DRC1 EEPROM
             if(CCRCDCPerGetUicEeprom(CCR_CDC_DESTINATION_DRC1, &readout1) == 0){
+                drc1_read = true;
             	//uint8_t versionarray1[4];
                 //for (int i=0; i<4 ;++i)
                 //    versionarray1[i] = ((uint8_t*)&readout1.version)[3-i];
                 //memcpy(&readoutarray1[0], versionarray1, 4);
                 //memcpy(&readoutarray1[4], readout1.data, 0x300);
-                WriteFile(&readout1, 0x304, "/vol/external01/eeprom1.bin");
+                WriteFile(&readout1, "/vol/external01/eeprom1.bin");
             }
             mState = STATE_DONE;
             break;

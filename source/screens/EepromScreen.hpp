@@ -19,7 +19,7 @@ private:
         STATE_DONE,
         STATE_ERROR,
     } mState = STATE_DUMP;
-
+    bool drc1_read = false;
     std::string mErrorString;
 
 };
