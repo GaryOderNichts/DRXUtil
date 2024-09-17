@@ -64,13 +64,13 @@ bool FlashUtils::CheckVersionSafety(const uint32_t firmver, const uint32_t langv
 {
     // Very crude way to do the checks universally, but it works well enough
     // We take the firmware version as well as the language version (w/o region - am I stupid?) and compare them 
-    if ((firmver == 0x190c0117 || firmver == 0xfe000000) && ((langver & 0xFFFF00) ^ 0x170200)==0){ // Only patched firmware uses language v5890
+    if ((firmver == 0x190c0117 || firmver == 0xfe000000) && ((langver & 0xFFFF00) == 0x170200)){ // Only patched firmware uses language v5890
         return true;
-    } else if (firmver == 0x18140116 && not ((langver & 0xFFFF00) ^ 0x160400)){
+    } else if (firmver == 0x18140116 && ((langver & 0xFFFF00) == 0x160400)){
         return true;
-    } else if (firmver == 0x17080114 && not ((langver & 0xFFFF00) ^ 0x140000)){
+    } else if (firmver == 0x17080114 && ((langver & 0xFFFF00) == 0x140000)){
         return true;
-    } else if ((firmver == 0x151e0113 || firmver == 0x15060113 || firmver == 0x14060113) && not ((langver & 0xFFFF00) ^ 0x130000)){ // 3 versions have used language v4864
+    } else if ((firmver == 0x151e0113 || firmver == 0x15060113 || firmver == 0x14060113) && ((langver & 0xFFFF00) == 0x130000)){ // 3 versions have used language v4864
         return true;
     } else {
         return false;
