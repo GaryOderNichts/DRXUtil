@@ -13,8 +13,6 @@ public:
 
     bool Update(VPADStatus& input);
 
-    void OnEraseCompleted();
-
 private:
     enum State {
         STATE_UPDATE,

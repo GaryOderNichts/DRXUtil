@@ -76,8 +76,3 @@ bool FormatScreen::Update(VPADStatus& input) // This is the core logic part
 
     return true;
 }
-
-void FormatScreen::OnEraseCompleted()
-{
-    mEraseComplete = true;
-}
