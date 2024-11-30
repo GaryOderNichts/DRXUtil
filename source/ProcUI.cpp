@@ -4,6 +4,10 @@
 #include <proc_ui/procui.h>
 #include <sysapp/launch.h>
 
+#include <nn/erreula.h> // no HOME icon
+#include <vpad/input.h> // DRC input
+#include <padscore/kpad.h> // BT input
+
 namespace {
 
 constexpr uint64_t kMiiMakerTitleID = 0x000500101004A000ull;
@@ -30,7 +34,11 @@ uint32_t SaveCallback(void* context)
 uint32_t HomeButtonDeniedCallback(void* context)
 {
     if (!isHomeButtonMenuEnabled) {
-        // TODO could show a denied image here
+        VPADStatus vpadStatus;
+        UpdatePads(vpadStatus);
+        nn::erreula::HomeNixSignArg noHOME;
+        noHOME.unknown0x00 = 1;
+        if (vpadStatus.trigger & 0x2) {AppearHomeNixSign(noHOME);} // have you pushed HOME?
     } else {
         if (isLegacyLoader) {
             ProcUI::StopRunning();
