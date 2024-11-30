@@ -7,6 +7,8 @@
 #include <padscore/kpad.h>
 #include <sndcore2/core.h>
 
+VPADStatus globalVPADStatus;
+
 namespace
 {
 
@@ -115,6 +117,7 @@ void UpdatePads(VPADStatus* status)
             }
         }
     }
+    globalVPADStatus = *status;
 }
 
 }
@@ -134,11 +137,10 @@ int main(int argc, char const* argv[])
     std::unique_ptr<Screen> mainScreen = std::make_unique<MainScreen>();
 
     while (ProcUI::IsRunning()) {
-        VPADStatus input{};
-        VPADRead(VPAD_CHAN_0, &input, 1, nullptr);
-        UpdatePads(&input);
+        VPADRead(VPAD_CHAN_0, &globalVPADStatus, 1, nullptr);
+        UpdatePads(&globalVPADStatus);
 
-        if (!mainScreen->Update(input)) {
+        if (!mainScreen->Update(globalVPADStatus)) {
             ProcUI::StopRunning();
         }
 

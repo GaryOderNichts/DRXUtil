@@ -1,4 +1,5 @@
 #include "ProcUI.hpp"
+#include "main.hpp"
 #include <coreinit/foreground.h>
 #include <coreinit/title.h>
 #include <proc_ui/procui.h>
@@ -34,11 +35,9 @@ uint32_t SaveCallback(void* context)
 uint32_t HomeButtonDeniedCallback(void* context)
 {
     if (!isHomeButtonMenuEnabled) {
-        VPADStatus vpadStatus;
-        UpdatePads(vpadStatus);
         nn::erreula::HomeNixSignArg noHOME;
         noHOME.unknown0x00 = 1;
-        if (vpadStatus.trigger & 0x2) {AppearHomeNixSign(noHOME);} // have you pushed HOME?
+        if (globalVPADStatus.trigger & 0x2) {AppearHomeNixSign(noHOME);} // have you pushed HOME?
     } else {
         if (isLegacyLoader) {
             ProcUI::StopRunning();
