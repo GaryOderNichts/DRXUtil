@@ -16,7 +16,7 @@ TOPDIR ?= $(CURDIR)
 APP_NAME		:=	DRXUtil
 APP_SHORTNAME		:=	DRXUtil
 APP_AUTHOR		:=	GaryOderNichts
-APP_VERSION		:=	1.1
+APP_VERSION		:=	1.2
 
 include $(DEVKITPRO)/wut/share/wut_rules
 
@@ -54,7 +54,7 @@ CXXFLAGS	:= $(CFLAGS) -std=gnu++20
 ASFLAGS	:=	$(ARCH)
 LDFLAGS	=	$(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=	-lSDL2 -lSDL2_ttf -lfreetype -lharfbuzz -lfreetype -lpng -lbz2 -lz -lmocha -lwut
+LIBS	:=	-lSDL2 -lSDL2_ttf -lSDL2_gfx -lfreetype -lharfbuzz -lfreetype -lpng -lbz2 -lz -lmocha -lwut
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level

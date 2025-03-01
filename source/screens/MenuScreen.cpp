@@ -4,18 +4,18 @@
 #include "FlashScreen.hpp"
 #include "InfoScreen.hpp"
 #include "SetRegionScreen.hpp"
-#include "EnableDKMenuScreen.hpp"
+#include "EditDeviceInfoScreen.hpp"
 
 #include <vector>
 
 MenuScreen::MenuScreen()
  : mEntries({
-        { MENU_ID_INFO,          { 0xf085, "Show DRC/DRH information" }},
-        { MENU_ID_FLASH,         { 0xf1c9, "Flash firmware" }},
-        { MENU_ID_SET_REGION,    { 0xf0ac, "Set region" }},
-        { MENU_ID_ENABLE_DKMENU, { 0xf188, "Enable DK Menu" }},
-        { MENU_ID_ABOUT,         { 0xf05a, "About DRXUtil" }},
-        // { MENU_ID_EXIT,       { 0xf057, "Exit" }},
+        { MENU_ID_INFO,             { 0xf085, "Show DRC/DRH information" }},
+        { MENU_ID_FLASH,            { 0xf1c9, "Flash firmware" }},
+        { MENU_ID_SET_REGION,       { 0xf0ac, "Set region" }},
+        { MENU_ID_EDIT_DEVICE_INFO, { 0xf1de, "Edit device info" }},
+        { MENU_ID_ABOUT,            { 0xf05a, "About DRXUtil" }},
+        // { MENU_ID_EXIT,          { 0xf057, "Exit" }},
     })
 {
 
@@ -80,8 +80,8 @@ bool MenuScreen::Update(VPADStatus& input)
         case MENU_ID_SET_REGION:
             mSubscreen = std::make_unique<SetRegionScreen>();
             break;
-        case MENU_ID_ENABLE_DKMENU:
-            mSubscreen = std::make_unique<EnableDKMenuScreen>();
+        case MENU_ID_EDIT_DEVICE_INFO:
+            mSubscreen = std::make_unique<EditDeviceInfoScreen>();
             break;
         case MENU_ID_ABOUT:
             mSubscreen = std::make_unique<AboutScreen>();

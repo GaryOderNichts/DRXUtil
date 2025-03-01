@@ -1,5 +1,22 @@
+/*
+ *   Copyright (C) 2024 GaryOderNichts
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 #include "Gfx.hpp"
 #include "SDL_FontCache.h"
+#include <SDL2_gfxPrimitives.h>
 #include <map>
 #include <cstdarg>
 
@@ -106,13 +123,13 @@ bool Init()
         return false;
     }
 
-    if (!FC_LoadFont_RW(monospaceFont, renderer, SDL_RWFromMem((void*)ter_u32b_bdf, ter_u32b_bdf_size), 1, 32, Gfx::COLOR_BLACK, TTF_STYLE_NORMAL)) {
+    if (!FC_LoadFont_RW(monospaceFont, renderer, SDL_RWFromConstMem(ter_u32b_bdf, ter_u32b_bdf_size), 1, 32, Gfx::COLOR_BLACK, TTF_STYLE_NORMAL)) {
         FC_FreeFont(monospaceFont);
         return false;
     }
 
     // icons @256 should be large enough for our needs
-    iconFont = TTF_OpenFontRW(SDL_RWFromMem((void*)fa_solid_900_ttf, fa_solid_900_ttf_size), 1, 256);
+    iconFont = TTF_OpenFontRW(SDL_RWFromConstMem(fa_solid_900_ttf, fa_solid_900_ttf_size), 1, 256);
     if (!iconFont) {
         return false;
     }
@@ -151,9 +168,7 @@ void Render()
 
 void DrawRectFilled(int x, int y, int w, int h, SDL_Color color)
 {
-    SDL_Rect rect{x, y, w, h};
-    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-    SDL_RenderFillRect(renderer, &rect);
+    boxRGBA(renderer, x, y, x + w, y + h, color.r, color.g, color.b, color.a);
 }
 
 void DrawRect(int x, int y, int w, int h, int borderSize, SDL_Color color)
@@ -162,6 +177,28 @@ void DrawRect(int x, int y, int w, int h, int borderSize, SDL_Color color)
     DrawRectFilled(x, y + h - borderSize, w, borderSize, color);
     DrawRectFilled(x, y, borderSize, h, color);
     DrawRectFilled(x + w - borderSize, y, borderSize, h, color);
+}
+
+void DrawRectRoundedFilled(int x, int y, int w, int h, int radius, SDL_Color color)
+{
+    roundedBoxRGBA(renderer, x, y, x + w, y + h, radius, color.r, color.g, color.b, color.a);
+}
+
+void DrawCircleFilled(int x, int y, int radius, SDL_Color color)
+{
+    filledCircleRGBA(renderer, x, y, radius, color.r, color.g, color.b, color.a);
+}
+
+void DrawCircle(int x, int y, int radius, int borderSize, SDL_Color color)
+{
+    if (borderSize <= 0) {
+        return;
+    }
+
+    // TODO eh this is not nice
+    while (borderSize--) {
+        circleRGBA(renderer, x, y, radius - borderSize, color.r, color.g, color.b, color.a);
+    }
 }
 
 void DrawIcon(int x, int y, int size, SDL_Color color, Uint16 icon, AlignFlags align, double angle)
