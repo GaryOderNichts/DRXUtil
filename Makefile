@@ -16,7 +16,7 @@ TOPDIR ?= $(CURDIR)
 APP_NAME		:=	DRXUtil
 APP_SHORTNAME		:=	DRXUtil
 APP_AUTHOR		:=	GaryOderNichts
-APP_VERSION		:=	1.2
+APP_VERSION		:=	2.0
 
 include $(DEVKITPRO)/wut/share/wut_rules
 
@@ -31,7 +31,7 @@ include $(DEVKITPRO)/wut/share/wut_rules
 # TV_SPLASH is the image displayed during bootup on the TV, leave blank to use default rule
 # DRC_SPLASH is the image displayed during bootup on the DRC, leave blank to use default rule
 #-------------------------------------------------------------------------------
-TARGET		:=	$(notdir $(CURDIR))
+TARGET		:=	DRXUtil
 BUILD		:=	build
 SOURCES		:=	source source/screens
 DATA		:=	data

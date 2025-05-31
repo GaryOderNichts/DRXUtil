@@ -176,7 +176,7 @@ bool EditDeviceInfoScreen::Update(VPADStatus& input)
 
                 if (mSelected == OPTION_ID_SHIPMENT_STATUS && mIsUnshipped) {
                     mMessageBox = std::make_unique<MessageBox>(
-                        "You are about to unship your Gamepad!",
+                        "This option will unship your Gamepad!",
                         "Are you sure you want to set your Gamepad to an unshipped state?\n"
                         "Only do this if you know what you're doing.\n"
                         "If your Gamepad is set to unshipped, it will only boot into the Service Menu.\n"

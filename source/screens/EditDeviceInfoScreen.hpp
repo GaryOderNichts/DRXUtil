@@ -1,11 +1,10 @@
 #pragma once
 
 #include "Screen.hpp"
+#include "MessageBox.hpp"
 #include <map>
 #include <memory>
 #include <nsysccr/cdc.h>
-
-#include "MessageBox.hpp"
 
 class EditDeviceInfoScreen : public Screen
 {
