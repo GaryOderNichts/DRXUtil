@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Screen.hpp"
+#include "MessageBox.hpp"
 #include <map>
+#include <memory>
 
 class FlashScreen : public Screen
 {
@@ -24,11 +26,11 @@ public:
     void OnUpdateCompleted(int32_t result);
 
 private:
+    bool PatchFirmware();
+
     enum State {
         STATE_SELECT_FILE,
-        STATE_CONFIRM,
         STATE_PREPARE,
-        STATE_CONFIRM2,
         STATE_UPDATE,
         STATE_FLASHING,
         STATE_ACTIVATE,
@@ -38,6 +40,7 @@ private:
 
     enum FileID {
         FILE_ORIGINAL,
+        FILE_BUILTIN,
         FILE_SDCARD,
     } mFile = FILE_ORIGINAL;
     struct FileEntry {
@@ -53,4 +56,6 @@ private:
     int32_t mFlashingProgress;
     bool mUpdateComplete;
     int32_t mUpdateResult;
+    
+    std::unique_ptr<MessageBox> mMessageBox;
 };

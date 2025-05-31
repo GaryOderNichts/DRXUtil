@@ -2,6 +2,7 @@
 #include "Gfx.hpp"
 #include "ProcUI.hpp"
 #include "Utils.hpp"
+#include "Firmware.hpp"
 #include <cstdio>
 
 #include <coreinit/mcp.h>
@@ -12,6 +13,8 @@
 #include <nn/ccr.h>
 
 namespace {
+
+#include "logo.inc"
 
 bool GetDRCFirmwarePath(std::string& path)
 {
@@ -41,6 +44,22 @@ bool ReadFirmwareHeader(const std::string& path, FlashScreen::FirmwareHeader& he
     }
 
     if (fread(&header, 1, sizeof(header), f) != sizeof(header)) {
+        fclose(f);
+        return false;
+    }
+
+    fclose(f);
+    return true;
+}
+
+bool WriteFile(const std::string& path, std::span<const std::byte> data)
+{
+    FILE* f = fopen(path.c_str(), "wb");
+    if (!f) {
+        return false;
+    }
+
+    if (fwrite(data.data(), 1, data.size(), f) != data.size()) {
         fclose(f);
         return false;
     }
@@ -190,8 +209,16 @@ void SoftwareUpdateCallback(IOSError error, void* arg)
 FlashScreen::FlashScreen()
  : mFileEntries({
     {FILE_ORIGINAL, {0xf187, "Original Firmware"}},
+    {FILE_BUILTIN,  {0xf462, "Built-in Firmware Patches"}},
     {FILE_SDCARD,   {0xf7c2, "From SD Card (\"sd:/drc_fw.bin\")"}},
- })
+ }),
+ mErrorString(),
+ mFirmwarePath(),
+ mFirmwareHeader(),
+ mFlashingProgress(0),
+ mUpdateComplete(false),
+ mUpdateResult(-1),
+ mMessageBox()
 {
 }
 
@@ -218,23 +245,8 @@ void FlashScreen::Draw()
             }
             break;
         }
-        case STATE_CONFIRM: {
-            Gfx::Print(Gfx::SCREEN_WIDTH / 2, Gfx::SCREEN_HEIGHT / 2, 64, Gfx::COLOR_TEXT,
-                Utils::sprintf("Are you sure?\n"
-                               "About to flash: %s", mFileEntries[mFile].name),
-                Gfx::ALIGN_CENTER);
-            break;
-        }
         case STATE_PREPARE: {
             Gfx::Print(Gfx::SCREEN_WIDTH / 2, Gfx::SCREEN_HEIGHT / 2, 64, Gfx::COLOR_TEXT, "Preparing...", Gfx::ALIGN_CENTER);
-            break;
-        }
-        case STATE_CONFIRM2: {
-            Gfx::Print(Gfx::SCREEN_WIDTH / 2, Gfx::SCREEN_HEIGHT / 2, 64, Gfx::COLOR_ERROR,
-                Utils::sprintf("Are you really really really sure?\n"
-                               "About to flash firmware version 0x%08x.\n"
-                               "Flashing a firmware can do permanent damage!!!\n", mFirmwareHeader.version),
-                Gfx::ALIGN_CENTER);
             break;
         }
         case STATE_UPDATE: {
@@ -266,17 +278,27 @@ void FlashScreen::Draw()
 
     if (mState == STATE_SELECT_FILE) {
         DrawBottomBar("\ue07d Navigate", "\ue044 Exit", "\ue000 Confirm / \ue001 Back");
-    } else if (mState == STATE_CONFIRM || mState == STATE_CONFIRM2) {
-        DrawBottomBar(nullptr, "\ue044 Exit", "\ue000 Confirm / \ue001 Back");
     } else if (mState == STATE_PREPARE || mState == STATE_UPDATE || mState == STATE_FLASHING || mState == STATE_ACTIVATE) {
         DrawBottomBar(nullptr, "Please wait...", nullptr);
     } else {
         DrawBottomBar(nullptr, nullptr, "\ue001 Back");
     }
+
+    if (mMessageBox) {
+        mMessageBox->Draw();
+    }
 }
 
 bool FlashScreen::Update(VPADStatus& input)
 {
+    if (mMessageBox) {
+        if (!mMessageBox->Update(input)) {
+            mMessageBox.reset();
+        }
+
+        return true;
+    }
+
     switch (mState)
     {
         case STATE_SELECT_FILE: {
@@ -285,7 +307,20 @@ bool FlashScreen::Update(VPADStatus& input)
             }
 
             if (input.trigger & VPAD_BUTTON_A) {
-                mState = STATE_CONFIRM;
+                mMessageBox = std::make_unique<MessageBox>(
+                    "Are you sure?",
+                    Utils::sprintf("About to flash: %s\n"
+                                   "Modifying the firmware can render your Gamepad unusable!\n"
+                                   "Never install anything that you don't trust.\n"
+                                   "Only continue if you know what you're doing.",
+                                   mFileEntries[mFile].name),
+                    std::vector{
+                        MessageBox::Option{0, "\ue001 Back", [this]() {} },
+                        MessageBox::Option{0xf00c, "Continue", [this]() {
+                            mState = STATE_PREPARE;
+                        }},
+                    }
+                );
                 break;
             }
 
@@ -297,18 +332,6 @@ bool FlashScreen::Update(VPADStatus& input)
                 if (mFile > FILE_ORIGINAL) {
                     mFile = static_cast<FileID>(mFile - 1);
                 }
-            }
-            break;
-        }
-        case STATE_CONFIRM:
-        case STATE_CONFIRM2: {
-            if (input.trigger & VPAD_BUTTON_B) {
-                return false;
-            }
-
-            if (input.trigger & VPAD_BUTTON_A) {
-                mState = (mState == STATE_CONFIRM) ? STATE_PREPARE : STATE_UPDATE;
-                break;
             }
             break;
         }
@@ -340,6 +363,11 @@ bool FlashScreen::Update(VPADStatus& input)
             if (mFile == FILE_ORIGINAL) {
                 mFirmwarePath = originalFirmwarePath;
                 mFirmwareHeader = originalFirmwareHeader;
+            } else if (mFile == FILE_BUILTIN) {
+                if (!PatchFirmware()) {
+                    mState = STATE_ERROR;
+                    break;
+                }
             } else if (mFile == FILE_SDCARD) {
                 if (!ReadFirmwareHeader("/vol/external01/drc_fw.bin", mFirmwareHeader)) {
                     mErrorString = "Failed to read DRC firmware header";
@@ -367,7 +395,20 @@ bool FlashScreen::Update(VPADStatus& input)
                 break;
             }
 
-            mState = STATE_CONFIRM2;
+            mMessageBox = std::make_unique<MessageBox>(
+                "Are you really really really sure?",
+                Utils::sprintf("About to flash firmware version 0x%08x.\n"
+                               "Flashing a firmware can do permanent damage!!!\n",
+                               mFirmwareHeader.version),
+                std::vector{
+                    MessageBox::Option{0, "\ue001 Back", [this]() {} },
+                    MessageBox::Option{0xf00c, "Continue", [this]() {
+                        mState = STATE_UPDATE;
+                    }},
+                }
+            );
+            // Go back to select file, if the message box closes without selecting continue
+            mState = STATE_SELECT_FILE;
             break;
         }
         case STATE_UPDATE: {
@@ -451,14 +492,8 @@ bool FlashScreen::Update(VPADStatus& input)
             mState = STATE_DONE;
             break;
         }
+        case STATE_ERROR:
         case STATE_DONE: {
-            if (input.trigger & VPAD_BUTTON_B) {
-                ProcUI::SetHomeButtonMenuEnabled(true);
-                return false;
-            }
-            break;
-        }
-        case STATE_ERROR: {
             if (input.trigger & VPAD_BUTTON_B) {
                 ProcUI::SetHomeButtonMenuEnabled(true);
                 return false;
@@ -477,4 +512,107 @@ void FlashScreen::OnUpdateCompleted(int32_t result)
 {
     mUpdateComplete = true;
     mUpdateResult = result;
+}
+
+bool FlashScreen::PatchFirmware()
+{
+    std::string firmwarePath;
+    if (!GetDRCFirmwarePath(firmwarePath)) {
+        mErrorString = "Failed to get firmware path for patching";
+        return false;
+    }
+
+    FileStream stream(firmwarePath);
+    if (stream.GetError() != Stream::ERROR_OK) {
+        mErrorString = "Failed to open firmware for patching";
+        return false;
+    }
+
+    auto blob = FirmwareBlob::FromStream(stream);
+    if (!blob) {
+        mErrorString = "Failed to parse firmware\n" + blob.error();
+        return false;
+    }
+
+    if (blob->GetImageVersion() != 0x190c0117) {
+        mErrorString = "Invalid image version to patch";
+        return false;
+    }
+
+    // Patch the LVC section
+    auto lvc = blob->GetFirmware().GetSection<GenericSection>("LVC_");
+    if (lvc) {
+        if (Utils::crc32(lvc->ToBytes()) != 0x82d87264) {
+            mErrorString = "Invalid LVC checksum";
+            return false;
+        }
+
+        // Patch jumptable to make ID 1 valid
+        lvc->WriteAt<std::uint8_t> (0x0003c9c4, 0x30);
+        // Patch config table at offset 1 to insert region
+        lvc->WriteAt<std::uint32_t>(0x000b28d0, 0x3);   // size
+        lvc->WriteAt<std::uint32_t>(0x000b28d4, 0x103); // eeprom offset
+
+        // Patch jumptable to make ID 4 valid
+        lvc->WriteAt<std::uint8_t> (0x0003c9c7, 0x30);
+        // Patch config table at offset 4 to insert board config
+        lvc->WriteAt<std::uint32_t>(0x000b28e8, 0x3);   // size
+        lvc->WriteAt<std::uint32_t>(0x000b28ec, 0x106); // eeprom offset
+    } else {
+        mErrorString = "LVC section not found in firmware";
+        return false;
+    }
+
+    // Add "Modified Firmware" logo to startup screen in resource section
+    auto img = blob->GetFirmware().GetSection<ResourceSection>("IMG_");
+    if (img) {
+        auto startupScreen = img->GetResource<BitmapResource>(0x2001);
+        if (startupScreen) {
+            startupScreen->BlendBitmapBits(logo, 103u, 400u, 48u);
+        } else {
+            mErrorString = "Startup screen not found";
+            return false;
+        }
+    } else {
+        mErrorString = "IMG section not found";
+        return false;
+    }
+
+    // Patch version in version section
+    auto ver = blob->GetFirmware().GetSection<GenericSection>("VER_");
+    if (ver) {
+        ver->WriteAt<std::uint32_t>(0, 0xfe000000);
+    } else {
+        mErrorString = "Version section not found";
+        return false;
+    }
+
+    blob->SetImageVersion(0xfe000000);
+
+    auto patchedBytes = blob->ToBytes();
+
+// This check can be disabled when experimenting with patches
+#if 1
+    std::uint32_t crc = Utils::crc32(patchedBytes);
+    if (crc != 0xd13694f3 && // JPN
+        crc != 0xb0aed5b6 && // USA
+        crc != 0x2d177dfb)   // EUR
+    {
+        mErrorString = "Patched file CRC doesn't match";
+        return false;
+    }
+#endif
+
+    mFirmwarePath = "/vol/storage_mlc01/usr/tmp/drc_fw.bin";
+    if (!WriteFile("storage_mlc01:/usr/tmp/drc_fw.bin", patchedBytes)) {
+        mErrorString = "Failed to write temporary file to MLC";
+        return false;
+    }
+
+    mFirmwareHeader.version            = blob->GetImageVersion();
+    mFirmwareHeader.blockSize          = blob->GetBlockSize();
+    mFirmwareHeader.sequencePerSession = blob->GetSequencePerSession();
+    mFirmwareHeader.imageSize          = patchedBytes.size() - sizeof(mFirmwareHeader);
+
+    return true;
 }

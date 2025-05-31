@@ -2,6 +2,7 @@
 
 #include <string>
 #include <memory>
+#include <span>
 
 namespace Utils
 {
@@ -18,5 +19,7 @@ std::string sprintf(const std::string& format, Args ...args)
 }
 
 std::string ToHexString(const void* data, size_t size);
+
+std::uint32_t crc32(std::span<const std::byte> bytes);
 
 }
